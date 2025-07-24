@@ -15,54 +15,54 @@
 # For learning, research, or personal use only. Strictly prohibited for any illegal or irregular activities.
 # For detailed license information, see the LICENSE file.
 # ===============================================================
-# 中文版本 suda_wifi.py
+# English Version suda_wifi_en.py
 import requests
 import re
 import socket
 import time
 from datetime import timedelta
 
-# 运营商映射关系
+# Carrier mapping
 CARRIER_MAP = {
-    "@xyw": "校园网",
-    "@zgyd": "中国移动",
-    "@cucc": "中国联通",
-    "@ctc": "中国电信"
+    "@xyw": "Campus Network",
+    "@zgyd": "China Mobile",
+    "@cucc": "China Unicom",
+    "@ctc": "China Telecom"
 }
 
 CARRIER_SUFFIX = {
-    "1": ("校园网", "@xyw"),
-    "2": ("中国移动", "@zgyd"),
-    "3": ("中国联通", "@cucc"),
-    "4": ("中国电信", "@ctc")
+    "1": ("Campus Network", "@xyw"),
+    "2": ("China Mobile", "@zgyd"),
+    "3": ("China Unicom", "@cucc"),
+    "4": ("China Telecom", "@ctc")
 }
 
 def get_local_ip():
-    """获取当前设备IP"""
+    """Get current device IP"""
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("8.8.8.8", 80))
             return s.getsockname()[0]
     except:
-        return "未知IP"
+        return "Unknown IP"
 
 def parse_login_status(html_content):
-    """解析登录状态"""
+    """Parse login status"""
     status = {
-        "current_ip": "未知",
+        "current_ip": "Unknown",
         "login_account": "",
         "carrier": "",
-        "online_time": "0秒",
+        "online_time": "0s",
         "is_login": False,
-        "is_login_page": "登录页" in html_content
+        "is_login_page": "Login Page" in html_content
     }
     
-    # 提取IP
+    # Extract IP
     ip_match = re.search(r'(v4ip=\'|ss5=")([\d.]+)', html_content)
     if ip_match:
         status["current_ip"] = ip_match.group(2)
     
-    # 提取账号和运营商
+    # Extract account and carrier
     uid_match = re.search(r'uid=\'([^\']+)\'', html_content)
     if uid_match:
         full_account = uid_match.group(1)
@@ -73,7 +73,7 @@ def parse_login_status(html_content):
                 status["is_login"] = True
                 break
     
-    # 提取在线时长
+    # Extract online time
     oltime_match = re.search(r'oltime=(\d+)', html_content)
     if oltime_match and status["is_login"]:
         try:
@@ -81,14 +81,14 @@ def parse_login_status(html_content):
         except:
             pass
     
-    # 登录页判断
+    # Login page check
     if status["is_login_page"]:
         status["is_login"] = False
     
     return status
 
 def check_login_status(session):
-    """检查登录状态"""
+    """Check login status"""
     try:
         response = session.get("http://10.9.1.3", timeout=10)
         return parse_login_status(response.text)
@@ -96,9 +96,9 @@ def check_login_status(session):
         return {"is_login": False, "is_login_page": True}
 
 def logout(session, current_ip, account_with_suffix):
-    """执行注销"""
+    """Perform logout"""
     try:
-        # 解绑MAC
+        # Unbind MAC
         unbind_url = "http://10.9.1.3:801/eportal/"
         unbind_params = {
             "c": "Portal", "a": "unbind_mac", "callback": "dr1003",
@@ -107,7 +107,7 @@ def logout(session, current_ip, account_with_suffix):
         }
         session.get(unbind_url, params=unbind_params, timeout=10)
         
-        # 执行注销
+        # Perform logout
         logout_url = "http://10.9.1.3:801/eportal/"
         logout_params = {
             "c": "Portal", "a": "logout", "callback": "dr1004",
@@ -117,13 +117,13 @@ def logout(session, current_ip, account_with_suffix):
         }
         session.get(logout_url, params=logout_params, timeout=10)
         
-        # 清理会话并验证
+        # Clear session and verify
         session.cookies.clear()
-        # 等待注销状态改变，最多5秒
+        # Wait for logout status change, up to 5 seconds
         start_time = time.time()
         while True:
             status = check_login_status(session)
-            # 注销后应为登录页
+            # After logout, should be login page
             if status.get("is_login_page", False):
                 return True
             if time.time() - start_time > 5:
@@ -133,7 +133,7 @@ def logout(session, current_ip, account_with_suffix):
         return False
 
 def login(session, account, carrier_suffix, current_ip, password):
-    """执行登录"""
+    """Perform login"""
     try:
         full_account = "{}{}".format(account, carrier_suffix)
         login_url = "http://10.9.1.3:801/eportal/?c=ACSetting&a=Login"
@@ -149,7 +149,7 @@ def login(session, account, carrier_suffix, current_ip, password):
             "redirect_url": "", "v6ip": "", "wlanuserip": current_ip
         }
         session.post(login_url, headers=headers, data=data, timeout=10)
-        # 等待登录状态改变，最多5秒
+        # Wait for login status change, up to 5 seconds
         start_time = time.time()
         while True:
             status = check_login_status(session)
@@ -162,72 +162,72 @@ def login(session, account, carrier_suffix, current_ip, password):
         return None
 
 def main():
-    print("===== SUDA_WiFi 校园网登录 v0.1 =====")
+    print("===== SUDA_WiFi Campus Network Login v0.1 =====")
     session = requests.Session()
     
-    # 检查登录状态
-    print("\n正在检查当前登录状态...")
+    # Check login status
+    print("\nChecking current login status...")
     status = check_login_status(session)
     
-    # 已登录处理
+    # Already logged in
     if status["is_login"]:
-        print("\n检测到已登录状态：")
-        print("当前IP：{}".format(status['current_ip']))
-        print("登录账号：{}".format(status['login_account']))
-        print("运营商：{}".format(status['carrier']))
+        print("\nAlready logged in:")
+        print("Current IP: {}".format(status['current_ip']))
+        print("Login Account: {}".format(status['login_account']))
+        print("Carrier: {}".format(status['carrier']))
         
-        # 注销确认
+        # Logout confirmation
         account_suffix = [k for k, v in CARRIER_MAP.items() if v == status["carrier"]][0]
         account_with_suffix = "{}{}".format(status['login_account'], account_suffix)
         
-        logout_choice = input("\n是否需要注销？(y/n)：").strip().lower()
+        logout_choice = input("\nDo you want to logout? (y/n): ").strip().lower()
         if logout_choice == "y":
-            print("正在执行注销...")
+            print("Logging out...")
             if logout(session, status["current_ip"], account_with_suffix):
-                print("✅ 注销成功！")
+                print("✅ Logout successful!")
             else:
-                print("❌ 注销失败，请重试")
+                print("❌ Logout failed, please try again")
         else:
-            print("已取消注销操作")
+            print("Logout cancelled")
         return
     
-    # 未登录处理
-    print("\n当前未登录，进入登录流程")
+    # Not logged in
+    print("\nNot logged in, entering login process")
     
-    # 选择运营商
-    print("\n请选择运营商：")
-    print("1. 校园网")
-    print("2. 中国移动")
-    print("3. 中国联通")
-    print("4. 中国电信")
-    carrier_choice = input("请输入选项(1-4)：").strip()
+    # Select carrier
+    print("\nPlease select carrier:")
+    print("1. Campus Network")
+    print("2. China Mobile")
+    print("3. China Unicom")
+    print("4. China Telecom")
+    carrier_choice = input("Please enter your choice (1-4): ").strip()
     while carrier_choice not in CARRIER_SUFFIX:
-        carrier_choice = input("输入无效，请重新选择(1-4)：").strip()
+        carrier_choice = input("Invalid input, please select again (1-4): ").strip()
     carrier_name, carrier_suffix = CARRIER_SUFFIX[carrier_choice]
     
-    # 输入账号密码
-    account = input("\n请输入账号：").strip()
-    password = input("请输入密码：").strip()
+    # Enter account and password
+    account = input("\nPlease enter account: ").strip()
+    password = input("Please enter password: ").strip()
     
-    # 获取IP
+    # Get IP
     current_ip = get_local_ip()
-    print("\n当前设备IP：{}".format(current_ip))
-    if current_ip == "未知IP":
-        current_ip = input("请手动输入IP：").strip()
+    print("\nCurrent device IP: {}".format(current_ip))
+    if current_ip == "Unknown IP":
+        current_ip = input("Please enter IP manually: ").strip()
     
-    # 执行登录
-    print("\n正在登录...")
+    # Perform login
+    print("\nLogging in...")
     login_status = login(session, account, carrier_suffix, current_ip, password)
     
-    # 登录结果
+    # Login result
     if login_status:
-        print("\n===== 登录成功 =====")
-        print("当前IP：{}".format(login_status['current_ip']))
-        print("登录账号：{}".format(login_status['login_account']))
-        print("运营商：{}".format(login_status['carrier']))
-        # print("在线时长：{}".format(login_status['online_time']))
+        print("\n===== Login Successful =====")
+        print("Current IP: {}".format(login_status['current_ip']))
+        print("Login Account: {}".format(login_status['login_account']))
+        print("Carrier: {}".format(login_status['carrier']))
+        # print("Online Time: {}".format(login_status['online_time']))
     else:
-        print("\n❌ 登录失败，请检查账号密码或运营商")
+        print("\n❌ Login failed, please check your account, password, or carrier")
 
 
 import threading
@@ -236,7 +236,7 @@ _version_check_result = {"has_update": False}
 
 def version_check_async(VERSION, result_dict):
     """
-    异步检查是否有新版本，结果写入result_dict
+    Asynchronously check for new version, write result to result_dict
     """
     url = "https://raw.githubusercontent.com/MichaelQian0517/SUDA_WiFi/refs/heads/main/.version_check"
     try:
@@ -255,18 +255,18 @@ def version_check_async(VERSION, result_dict):
 
 def print_version_update_notice():
     if _version_check_result.get("has_update"):
-        print("\n===== 新版本提醒 =====\n检测到新版本！请访问以更新：\nhttps://github.com/MichaelQian0517/SUDA_WiFi")
+        print("\n===== New Version Notice =====\nA new version is available! Please visit to update:\nhttps://github.com/MichaelQian0517/SUDA_WiFi")
 
 def end():
-    print("===== SUDA_WiFi 校园网登录 v0.1 =====")
+    print("===== SUDA_WiFi Campus Network Login v0.1 =====")
     print()
 
 if __name__ == "__main__":
-    # 启动版本检查线程
+    # Start version check thread
     version_thread = threading.Thread(target=version_check_async, args=(1, _version_check_result))
     version_thread.start()
     main()
-    # 等待版本检查完成
+    # Wait for version check to complete
     version_thread.join()
     print_version_update_notice()
     end()
